@@ -5,7 +5,7 @@ const bcrypt = require('bcrypt')
 
 const router = new Router()
 
-router.post("/user", (request, response) => {
+router.post("/user", (request, response, next) => {
   const userName = request.body.userName
   const email = request.body.email
   const password = request.body.password
@@ -24,6 +24,7 @@ router.post("/user", (request, response) => {
         response.status(201)
         response.send({ status: "ok" })
       })
+      .catch(next)
   }
 })
 
