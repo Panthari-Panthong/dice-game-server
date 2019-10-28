@@ -1,6 +1,6 @@
 const express = require('express')
 const bodyParser = require('body-parser')
-
+const cors = require('cors')
 
 const app = express()
 const port = 4000
@@ -8,6 +8,10 @@ const db = require('./db')
 
 
 const userRouter = require('./user/router')
+
+const corsMiddleware = cors()
+app.use(corsMiddleware)
+
 
 const jsonParser = bodyParser.json()
 app.use(jsonParser)
