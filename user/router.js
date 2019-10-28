@@ -6,7 +6,6 @@ const bcrypt = require('bcrypt')
 const router = new Router()
 
 router.post("/user", (request, response) => {
-  // console.log("Got a request on/user")
   const userName = request.body.userName
   const email = request.body.email
   const password = request.body.password
@@ -27,6 +26,14 @@ router.post("/user", (request, response) => {
       })
   }
 })
+
+router.get('/user/:id', (req, res, next) =>
+  User.findByPk(req.params.id)
+    .then(result => res.json(result))
+    .catch(next)
+)
+
+
 
 
 module.exports = router
