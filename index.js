@@ -9,6 +9,7 @@ const db = require('./db')
 
 const userRouter = require('./user/router')
 const auth = require('./server/auth/router')
+const roomRouter = require('./room/router')
 
 const corsMiddleware = cors()
 app.use(corsMiddleware)
@@ -19,6 +20,7 @@ app.use(jsonParser)
 
 app.use(auth)
 app.use(userRouter)
+app.use(roomRouter)
 
 app.listen(port, () => console.log(`Listening on ${port}`))
 
