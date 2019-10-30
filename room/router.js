@@ -2,24 +2,42 @@ const { Router } = require('express')
 const Room = require('./model')
 const auth = require('../server/auth/middleware')
 const router = new Router()
+const Sse = require('json-sse')
+const stream = new Sse()
 
-router.post('/room', auth, (req, res, next) =>
+router.post('/room', auth,(req, res, next) => {
   Room.create(req.body)
-    .then(result => res.json(result))
+    .then(result => {
+      res.json(result)
+      Room.findAll()
+      .then(rooms =>{
+        const data = JSON.stringify(rooms)
+        console.log("stream updated")
+        stream.send(data) //update the stream
+
+
+      })
+      
+    
+    })
     .catch(next)
-)
+})
 
 
-router.get('/room', (req, res, next) => {
+router.get('/room', async (req, res, next) => {
   const limit = req.query.limit || 25
   const offset = req.query.offset || 0
 
-  Room
-    .findAll({
-      limit, offset
-    })
-    .then(result => res.json(result))
-    .catch(error => next(error))
+  const rooms = await Room.findAll({limit, offset})
+    //.then(result => res.json(result))
+    //.catch(error => next(error))
+  console.log(rooms.dataValues)
+  const data = JSON.stringify(rooms)
+  console.log('rooms in db', data)
+
+  stream.updateInit(data) // put the data in the stream
+  stream.init(req, res) // starts the stream
+
 })
 
 
