@@ -14,7 +14,8 @@ const Room = db.define(
     current_dice1: Sequelize.INTEGER,
     current_dice2: Sequelize.INTEGER,
     winner_player: Sequelize.INTEGER,
-    turn_player: Sequelize.INTEGER
+    turn_player: Sequelize.INTEGER,
+    room_status: Sequelize.STRING
   },
   {
     timestamps: false
