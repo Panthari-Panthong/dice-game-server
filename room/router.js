@@ -51,7 +51,6 @@ router.patch('/room/:id', auth, async (req, res, next) => {
     case "roll":
       data.current_dice1 = Math.floor(Math.random() * 6) + 1
       data.current_dice2 = Math.floor(Math.random() * 6) + 1
-      data.turn_player = room.player1_id
 
       if (data.current_dice1 === 1 || data.current_dice2 === 1) {
         data.currenthand_player1 = 0
