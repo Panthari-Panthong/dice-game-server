@@ -6,8 +6,8 @@ const Sse = require('json-sse')
 const stream = new Sse()
 //const gameStream = new Sse()
 
-const getData = async() => {
-  const limit =  2000
+const getData = async () => {
+  const limit = 2000
   const offset = 0
   const rooms = await Room.findAll({ limit, offset })
   //.then(result => res.json(result))
@@ -19,25 +19,25 @@ const getData = async() => {
   //you can include names of players
 }
 
-const updateStream = async() => {
+const updateStream = async () => {
   const data = await getData()
   stream.send(data)
 }
 
 router.post('/room', auth, (req, res, next) => {
-  console.log('req user id!:',req.user.dataValues.id)
+  console.log('req user id!:', req.user.dataValues.id)
   // use req.user: to get player 1 id <-- works!
   // patch: req.user: to get player 2
   // patch: req.user: to know who's turn it is
-  
-  console.log('req body: ',req.body)
+
+  console.log('req body: ', req.body)
   Room.create({
     room_name: req.body.room_name,
     player1_id: req.user.dataValues.id
-    })
+  })
     .then(result => {
       console.log(result.id)
-      res.send({id: result.id})
+      res.send({ id: result.id })
       updateStream()
     })
     .catch(next)
@@ -72,16 +72,17 @@ router.get('/room', async (req, res, next) => {
 router.patch('/room/:id', auth, async (req, res, next) => {
   room = await Room.findByPk(req.params.id)
   //const data = JSON.stringify(room)
-  
+
 
   // Insert logic to see which user is doing things.
   //console.log("Room data:", room)
 
+  const data = {}
   switch (req.body.action) {
     case "roll":
-      const data = {}
       data.current_dice1 = Math.floor(Math.random() * 6) + 1
       data.current_dice2 = Math.floor(Math.random() * 6) + 1
+      data.turn_player = room.player1_id
 
       if (data.current_dice1 === 1 || data.current_dice2 === 1) {
         data.currenthand_player1 = 0
@@ -92,28 +93,50 @@ router.patch('/room/:id', auth, async (req, res, next) => {
           data.turn_player = 1
         }
       } else {
-        if (room.turn_player === 1) {
+        if (room.turn_player === room.player1_id) {
           // data.currenthand_player1 += data.current_dice1 + data.current_dice2
-          data.currenthand_player1 = 1
+          data.currenthand_player1 = 110
         } else {
           // data.currenthand_player2 += data.current_dice1 + data.current_dice2
-          data.currenthand_player1 = 2
+          data.currenthand_player2 = 220
         }
       }
       console.log("We should be updating now!", data)
-      room.update(data)
+      await room.update(data)
       res.send({ message: "done" })
       updateStream()
 
       return
+
+
     case "hold":
       console.log("Here we do hold stuff")
-      //updateStream()
+      if (room.turn_player === room.player1_id) {
+        data.player1_totalscore = room.player1_totalscore + room.currenthand_player1
+        data.currenthand_player1 = 0
+        data.turn_player = room.player2_id
+      } else {
+        data.player2_totalscore = room.player2_totalscore + room.currenthand_player2
+        data.currenthand_player2 = 0
+        data.turn_player = room.player1_id
+      }
+
+      if (room.player1_totalscore > 100) {
+        data.winner_player = room.player1_id
+      } else {
+        data.winner_player = room.player2_id
+      }
+
+      await room.update(data)
+      res.send({ message: "done" })
+      updateStream()
       return
+
+
     case "updatePlayer":
-      const player = {}
-      player.player2_id = req.user.dataValues.id
-      room.update(player)
+      data.player2_id = req.user.dataValues.id
+      data.room_status = 'Full'
+      await room.update(data)
       res.send({ message: "done" })
       updateStream()
       return
