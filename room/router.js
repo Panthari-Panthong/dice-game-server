@@ -1,82 +1,118 @@
 const { Router } = require('express')
 const Room = require('./model')
+const auth = require('../server/auth/middleware')
 const router = new Router()
+const Sse = require('json-sse')
+const stream = new Sse()
 
-router.post('/room', (req, res, next) =>
-  Room.create(req.body)
-    .then(result => res.json(result))
-    .catch(next)
-)
+const getData = async () => {
+  const limit = 2000
+  const offset = 0
+  const rooms = await Room.findAll({ limit, offset })
+  const data = JSON.stringify(rooms)
+  return data
+}
 
+const updateStream = async () => {
+  const data = await getData()
+  stream.send(data)
+}
 
-router.get('/room', (req, res, next) => {
-  const limit = req.query.limit || 25
-  const offset = req.query.offset || 0
+router.post('/room', auth, (req, res, next) => {
 
-  Room
-    .findAll({
-      limit, offset
+  Room.create({
+    room_name: req.body.room_name,
+    player1_id: req.user.dataValues.id,
+    player1_totalscore: 0,
+    currenthand_player1: 0,
+    turn_player: req.user.dataValues.id,
+    room_status: 'waiting'
+  })
+    .then(result => {
+      console.log(result.id)
+      res.send({ id: result.id })
+      updateStream()
     })
-    .then(result => res.json(result))
-    .catch(error => next(error))
+    .catch(next)
 })
 
 
+router.get('/room', async (req, res, next) => {
+  const data = await getData()
+  stream.updateInit(data) // put the data in the stream
+  stream.init(req, res) // starts the stream
+})
 
-router.patch('/room/:id', async (req, res, next) => {
-  console.log("ROOM", req.body);
-  console.log("paramsid", req.params.id)
-
+router.patch('/room/:id', auth, async (req, res, next) => {
   room = await Room.findByPk(req.params.id)
-    .catch(next)
 
-  // Insert logic to see which user is doing things.
-
-  console.log("Room data:", room)
-
+  const data = {}
   switch (req.body.action) {
-
     case "roll":
-      const data = {}
       data.current_dice1 = Math.floor(Math.random() * 6) + 1
       data.current_dice2 = Math.floor(Math.random() * 6) + 1
 
       if (data.current_dice1 === 1 || data.current_dice2 === 1) {
         data.currenthand_player1 = 0
         data.currenthand_player2 = 0
-
-        if (room.turn_player === 1) {
-          data.turn_player = 2
+        if (room.turn_player === room.player1_id) {
+          data.turn_player = room.player2_id
         } else {
-          data.turn_player = 1
+          data.turn_player = room.player1_id
         }
-
       } else {
-        if (room.turn_player === 1) {
-          data.currenthand_player1 += data.current_dice1 + data.current_dice2
+        if (room.turn_player === room.player1_id) {
+          data.currenthand_player1 = room.currenthand_player1 + data.current_dice1 + data.current_dice2
         } else {
-          data.currenthand_player2 += data.current_dice1 + data.current_dice2
+          data.currenthand_player2 = room.currenthand_player2 + data.current_dice1 + data.current_dice2
         }
       }
-      console.log("We should be updating now!", data)
 
-      room.update(data)
-
+      await room.update(data)
       res.send({ message: "done" })
+      updateStream()
 
       return
+
 
     case "hold":
-      console.log("Here we do hold stuff")
+      if (room.turn_player === room.player1_id) {
+        data.player1_totalscore = room.player1_totalscore + room.currenthand_player1
+        data.currenthand_player1 = 0
+        data.turn_player = room.player2_id
+        data.current_dice1 = null
+        data.current_dice2 = null
+      } else {
+        data.player2_totalscore = room.player2_totalscore + room.currenthand_player2
+        data.currenthand_player2 = 0
+        data.turn_player = room.player1_id
+        data.current_dice1 = null
+        data.current_dice2 = null
+      }
+
+      if (room.player1_totalscore > 100) {
+        data.winner_player = room.player1_id
+      } else {
+        data.winner_player = room.player2_id
+      }
+
+      await room.update(data)
+      res.send({ message: "done" })
+      updateStream()
       return
 
+
+    case "updatePlayer":
+      data.player2_id = req.user.dataValues.id
+      data.room_status = 'Full'
+
+      await room.update(data)
+      res.send({ message: "done" })
+      updateStream()
+      return
     default:
       console.log(`Unknown action ${req.body.action}`)
   }
-
-
-  // .then(room => room.update(req.body))
-  // .then(room => res.send(room))
 })
 
 router.delete('/room/:id', (req, res, next) =>
@@ -84,7 +120,6 @@ router.delete('/room/:id', (req, res, next) =>
     .destroy({ where: { id: req.params.id } })
     .then(() => res.status(200).send({ message: "Room deleted succesfully" }))
     .catch(next)
-
 )
 
 module.exports = router
