@@ -1,25 +1,52 @@
 const { Router } = require('express')
 const Room = require('./model')
+const auth = require('../server/auth/middleware')
 const router = new Router()
+const Sse = require('json-sse')
+const stream = new Sse()
 
-router.post('/room', (req, res, next) =>
+router.post('/room', auth,(req, res, next) => {
   Room.create(req.body)
-    .then(result => res.json(result))
+    .then(result => {
+      res.json(result)
+      Room.findAll()
+      .then(rooms =>{
+        const data = JSON.stringify(rooms)
+        console.log("stream updated")
+        stream.send(data) //update the stream
+
+
+      })
+      
+    
+    })
     .catch(next)
-)
+})
 
 
-router.get('/room', (req, res, next) => {
+router.get('/room', async (req, res, next) => {
   const limit = req.query.limit || 25
   const offset = req.query.offset || 0
 
-  Room
-    .findAll({
-      limit, offset
-    })
-    .then(result => res.json(result))
-    .catch(error => next(error))
+  const rooms = await Room.findAll({limit, offset})
+    //.then(result => res.json(result))
+    //.catch(error => next(error))
+  console.log(rooms.dataValues)
+  const data = JSON.stringify(rooms)
+  console.log('rooms in db', data)
+
+  stream.updateInit(data) // put the data in the stream
+  stream.init(req, res) // starts the stream
+
 })
+
+
+
+router.get('/room/:id', (req, res, next) =>
+  Room.findByPk(req.params.id)
+    .then(room => res.json(room))
+    .catch(next)
+)
 
 
 
@@ -53,9 +80,11 @@ router.patch('/room/:id', async (req, res, next) => {
 
       } else {
         if (room.turn_player === 1) {
-          data.currenthand_player1 += data.current_dice1 + data.current_dice2
+          // data.currenthand_player1 += data.current_dice1 + data.current_dice2
+          data.currenthand_player1 = 1
         } else {
-          data.currenthand_player2 += data.current_dice1 + data.current_dice2
+          // data.currenthand_player2 += data.current_dice1 + data.current_dice2
+          data.currenthand_player1 = 2
         }
       }
       console.log("We should be updating now!", data)
@@ -68,6 +97,15 @@ router.patch('/room/:id', async (req, res, next) => {
 
     case "hold":
       console.log("Here we do hold stuff")
+      return
+
+    case "updatePlayer":
+      const player = {}
+      player.player2_id = 2
+
+      room.update(player)
+      res.send({ message: "done" })
+
       return
 
     default:
