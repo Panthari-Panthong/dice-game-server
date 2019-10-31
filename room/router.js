@@ -27,7 +27,7 @@ router.post('/room', auth, (req, res, next) => {
     currenthand_player1: 0,
     turn_player: req.user.dataValues.id,
     room_status: 'waiting'
-    })
+  })
     .then(result => {
       console.log(result.id)
       res.send({ id: result.id })
@@ -64,7 +64,7 @@ router.patch('/room/:id', auth, async (req, res, next) => {
         if (room.turn_player === room.player1_id) {
           data.currenthand_player1 = room.currenthand_player1 + data.current_dice1 + data.current_dice2
         } else {
-          data.currenthand_player2 = room.currenthand_player2 +data.current_dice1 + data.current_dice2
+          data.currenthand_player2 = room.currenthand_player2 + data.current_dice1 + data.current_dice2
         }
       }
 
@@ -80,10 +80,14 @@ router.patch('/room/:id', auth, async (req, res, next) => {
         data.player1_totalscore = room.player1_totalscore + room.currenthand_player1
         data.currenthand_player1 = 0
         data.turn_player = room.player2_id
+        data.current_dice1 = null
+        data.current_dice2 = null
       } else {
         data.player2_totalscore = room.player2_totalscore + room.currenthand_player2
         data.currenthand_player2 = 0
         data.turn_player = room.player1_id
+        data.current_dice1 = null
+        data.current_dice2 = null
       }
 
       if (room.player1_totalscore > 100) {
