@@ -5,20 +5,21 @@ const router = new Router()
 const Sse = require('json-sse')
 const stream = new Sse()
 
-const getData = async() => {
-  const limit =  2000
+const getData = async () => {
+  const limit = 2000
   const offset = 0
   const rooms = await Room.findAll({ limit, offset })
   const data = JSON.stringify(rooms)
   return data
 }
 
-const updateStream = async() => {
+const updateStream = async () => {
   const data = await getData()
   stream.send(data)
 }
 
 router.post('/room', auth, (req, res, next) => {
+
   Room.create({
     room_name: req.body.room_name,
     player1_id: req.user.dataValues.id,
@@ -29,7 +30,7 @@ router.post('/room', auth, (req, res, next) => {
     })
     .then(result => {
       console.log(result.id)
-      res.send({id: result.id})
+      res.send({ id: result.id })
       updateStream()
     })
     .catch(next)
@@ -48,9 +49,9 @@ router.patch('/room/:id', auth, async (req, res, next) => {
   const data = {}
   switch (req.body.action) {
     case "roll":
-      
       data.current_dice1 = Math.floor(Math.random() * 6) + 1
       data.current_dice2 = Math.floor(Math.random() * 6) + 1
+      data.turn_player = room.player1_id
 
       if (data.current_dice1 === 1 || data.current_dice2 === 1) {
         data.currenthand_player1 = 0
@@ -67,16 +68,41 @@ router.patch('/room/:id', auth, async (req, res, next) => {
           data.currenthand_player2 = room.currenthand_player2 +data.current_dice1 + data.current_dice2
         }
       }
+
       await room.update(data)
       res.send({ message: "done" })
       updateStream()
 
       return
+
+
     case "hold":
-      console.log("Here we do hold stuff")
+      if (room.turn_player === room.player1_id) {
+        data.player1_totalscore = room.player1_totalscore + room.currenthand_player1
+        data.currenthand_player1 = 0
+        data.turn_player = room.player2_id
+      } else {
+        data.player2_totalscore = room.player2_totalscore + room.currenthand_player2
+        data.currenthand_player2 = 0
+        data.turn_player = room.player1_id
+      }
+
+      if (room.player1_totalscore > 100) {
+        data.winner_player = room.player1_id
+      } else {
+        data.winner_player = room.player2_id
+      }
+
+      await room.update(data)
+      res.send({ message: "done" })
+      updateStream()
       return
+
+
     case "updatePlayer":
       data.player2_id = req.user.dataValues.id
+      data.room_status = 'Full'
+
       await room.update(data)
       res.send({ message: "done" })
       updateStream()
