@@ -1,5 +1,5 @@
 const Sequelize = require('sequelize')
-const databaseUrl = 'postgres://postgres:dice@localhost:5432/postgres'
+const databaseUrl = process.env.DATABASE_URL || 'postgres://postgres:dice@localhost:5432/postgres'
 const db = new Sequelize(databaseUrl)
 
 db.sync({ force: false })
