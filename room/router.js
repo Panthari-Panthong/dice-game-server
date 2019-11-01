@@ -86,20 +86,19 @@ router.patch('/room/:id', auth, async (req, res, next) => {
         data.turn_player = room.player2_id
         data.current_dice1 = null
         data.current_dice2 = null
+        if (data.player1_totalscore >= 10) {
+          data.winner_player = room.player1_id
+        }
       } else {
         data.player2_totalscore = room.player2_totalscore + room.currenthand_player2
         data.currenthand_player2 = 0
         data.turn_player = room.player1_id
         data.current_dice1 = null
         data.current_dice2 = null
+        if (data.player2_totalscore >= 10) {
+          data.winner_player = room.player2_id
+        }
       }
-
-      if (room.player1_totalscore >= 100) {
-        data.winner_player = room.player1_id
-      } else if (room.player2_totalscore >= 100) {
-        data.winner_player = room.player2_id
-      }
-
       await room.update(data)
       res.send({ message: "done" })
       updateStream()
