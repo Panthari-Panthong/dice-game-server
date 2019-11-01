@@ -57,8 +57,8 @@ router.patch('/room/:id', auth, async (req, res, next) => {
       if (data.current_dice1 === 1 || data.current_dice2 === 1) {
         data.currenthand_player1 = 0
         data.currenthand_player2 = 0
-        data.current_dice1 = null
-        data.current_dice2 = null
+        // data.current_dice1 = null
+        // data.current_dice2 = null
         if (room.turn_player === room.player1_id) {
           data.turn_player = room.player2_id
         } else {
@@ -94,9 +94,9 @@ router.patch('/room/:id', auth, async (req, res, next) => {
         data.current_dice2 = null
       }
 
-      if (room.player1_totalscore >= 10) {
+      if (room.player1_totalscore >= 100) {
         data.winner_player = room.player1_id
-      } else if (room.player2_totalscore >= 10) {
+      } else if (room.player2_totalscore >= 100) {
         data.winner_player = room.player2_id
       }
 
