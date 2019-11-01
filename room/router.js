@@ -26,7 +26,7 @@ router.post('/room', auth, (req, res, next) => {
     player1_totalscore: 0,
     currenthand_player1: 0,
     turn_player: req.user.dataValues.id,
-    room_status: 'waiting',
+    room_status: 'WAITING',
     player2_totalscore: 0,
     currenthand_player2: 0,
   })
@@ -94,9 +94,9 @@ router.patch('/room/:id', auth, async (req, res, next) => {
         data.current_dice2 = null
       }
 
-      if (room.player1_totalscore > 100) {
+      if (room.player1_totalscore >= 10) {
         data.winner_player = room.player1_id
-      } else {
+      } else if (room.player2_totalscore >= 10) {
         data.winner_player = room.player2_id
       }
 
@@ -108,7 +108,7 @@ router.patch('/room/:id', auth, async (req, res, next) => {
 
     case "updatePlayer":
       data.player2_id = req.user.dataValues.id
-      data.room_status = 'Full'
+      data.room_status = 'FULL'
 
       await room.update(data)
       res.send({ message: "done" })
